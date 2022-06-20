@@ -33,6 +33,13 @@ func run() {
                 panic (err)
         }
 
+        render, err := NewRender(VertexShader, FragmentShader)
+        if err != nil {
+                panic (err)
+        }
+
+        fmt.Printf("Created shader with id %x\n", render.Shader.ID())
+
         for !win.Closed() {
 //                win.Clear()
                 win.Update()

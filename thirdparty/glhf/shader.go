@@ -12,7 +12,6 @@ import (
 // Shader is an OpenGL shader program.
 type Shader struct {
 	program    binder
-	vertexFmt  AttrFormat
 	uniformFmt AttrFormat
 	uniformLoc []int32
 }
@@ -22,7 +21,7 @@ type Shader struct {
 //
 // Note that vertexShader and fragmentShader parameters must contain the source code, they're
 // not filenames.
-func NewShader(vertexFmt, uniformFmt AttrFormat, vertexShader, fragmentShader string) (*Shader, error) {
+func NewShader(vertexShader, fragmentShader string, uniformFmt AttrFormat) (*Shader, error) {
 	shader := &Shader{
 		program: binder{
 			restoreLoc: gl.CURRENT_PROGRAM,
@@ -30,9 +29,7 @@ func NewShader(vertexFmt, uniformFmt AttrFormat, vertexShader, fragmentShader st
 				gl.UseProgram(obj)
 			},
 		},
-		vertexFmt:  vertexFmt,
 		uniformFmt: uniformFmt,
-		uniformLoc: make([]int32, len(uniformFmt)),
 	}
 
 	var vshader, fshader uint32
@@ -103,10 +100,13 @@ func NewShader(vertexFmt, uniformFmt AttrFormat, vertexShader, fragmentShader st
 	}
 
 	// uniforms
-	for i, uniform := range uniformFmt {
-		loc := gl.GetUniformLocation(shader.program.obj, gl.Str(uniform.Name+"\x00"))
-		shader.uniformLoc[i] = loc
-	}
+        if uniformFmt != nil {
+		shader.uniformLoc = make([]int32, len(uniformFmt))
+                for i, uniform := range uniformFmt {
+                        loc := gl.GetUniformLocation(shader.program.obj, gl.Str(uniform.Name+"\x00"))
+                        shader.uniformLoc[i] = loc
+                }
+        }
 
 	runtime.SetFinalizer(shader, (*Shader).delete)
 
@@ -122,11 +122,6 @@ func (s *Shader) delete() {
 // ID returns the OpenGL ID of this Shader.
 func (s *Shader) ID() uint32 {
 	return s.program.obj
-}
-
-// VertexFormat returns the vertex attribute format of this Shader. Do not change it.
-func (s *Shader) VertexFormat() AttrFormat {
-	return s.vertexFmt
 }
 
 // UniformFormat returns the uniform attribute format of this Shader. Do not change it.
@@ -159,7 +154,7 @@ func (s *Shader) UniformFormat() AttrFormat {
 //
 // The Shader must be bound before calling this method.
 func (s *Shader) SetUniformAttr(uniform int, value interface{}) (ok bool) {
-	if s.uniformLoc[uniform] < 0 {
+	if s.uniformFmt == nil || s.uniformLoc[uniform] < 0 {
 		return false
 	}
 

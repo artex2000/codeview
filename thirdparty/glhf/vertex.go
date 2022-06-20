@@ -185,10 +185,12 @@ func newVertexArray(shader *Shader, cap int) *vertexArray {
 			},
 		},
 		cap:    cap,
+                /*
 		format: shader.VertexFormat(),
 		stride: shader.VertexFormat().Size(),
 		offset: make([]int, len(shader.VertexFormat())),
 		shader: shader,
+                */
 	}
 
 	offset := 0
