@@ -7,7 +7,7 @@ import (
 
 	"github.com/artex2000/codeview/thirdparty/glhf"
 	"github.com/faiface/mainthread"
-	"github.com/go-gl/gl/v3.3-core/gl"
+	"github.com/go-gl/gl/v4.3-core/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
 	"github.com/pkg/errors"
 )
@@ -84,6 +84,7 @@ type WindowConfig struct {
 type Window struct {
 	window *glfw.Window
 
+        canvas             *Render
 	bounds             Rect
 	vsync              bool
 	cursorVisible      bool
@@ -207,7 +208,10 @@ func NewWindow(cfg WindowConfig) (*Window, error) {
                 w.window.SetFramebufferSizeCallback(func(_ *glfw.Window, width, height int) {
                         //fmt.Printf("Framebuffer size changed to %d : %d\n", width, height)
                         glhf.Bounds(0, 0, width, height)
-                        glhf.Clear(0.8, 0.9, 0.9, 0.0)
+                        glhf.Clear(0.8, 0.8, 0.9, 0.0)
+                        if w.canvas != nil {
+                                w.canvas.Draw()
+                        }
                         w.window.SwapBuffers()
                 })
 
@@ -279,9 +283,12 @@ func (w *Window) SwapBuffers() {
         */
 
 	mainthread.Call(func() {
-		w.begin()
+		w.begin() //make context current if needed
 
 		glhf.Clear(0.8, 0.9, 0.9, 0.0)
+                if w.canvas != nil {
+                        w.canvas.Draw()
+                }
 		w.window.SwapBuffers()
 		w.end()
 	})
@@ -494,4 +501,9 @@ func (w *Window) SetClipboard(str string) {
 	mainthread.Call(func() {
 		w.window.SetClipboardString(str)
 	})
+}
+
+// SetCanvas sets whether the Window's Update should synchronize with the monitor refresh rate.
+func (w *Window) SetCanvas(canvas *Render) {
+	w.canvas = canvas
 }

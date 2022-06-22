@@ -4,7 +4,7 @@ package glhf
 //
 // Example:
 //   AttrFormat{{"position", Vec2}, {"color", Vec4}, {"texCoord": Vec2}}
-type AttrFormat []Attr
+type AttrFormat    []Attr
 
 // Size returns the total size of all attributes of the AttrFormat.
 func (af AttrFormat) Size() int {

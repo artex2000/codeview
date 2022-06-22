@@ -1,6 +1,6 @@
 package glhf
 
-import "github.com/go-gl/gl/v3.3-core/gl"
+import "github.com/go-gl/gl/v4.3-core/gl"
 
 type binder struct {
 	restoreLoc uint32

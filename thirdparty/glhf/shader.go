@@ -5,15 +5,12 @@ import (
 	"runtime"
 
 	"github.com/faiface/mainthread"
-	"github.com/go-gl/gl/v3.3-core/gl"
-	"github.com/go-gl/mathgl/mgl32"
+	"github.com/go-gl/gl/v4.3-core/gl"
 )
 
 // Shader is an OpenGL shader program.
 type Shader struct {
-	program    binder
-	uniformFmt AttrFormat
-	uniformLoc []int32
+	program       binder
 }
 
 // NewShader creates a new shader program from the specified vertex shader and fragment shader
@@ -21,7 +18,7 @@ type Shader struct {
 //
 // Note that vertexShader and fragmentShader parameters must contain the source code, they're
 // not filenames.
-func NewShader(vertexShader, fragmentShader string, uniformFmt AttrFormat) (*Shader, error) {
+func NewShader(vertexShader, fragmentShader string) (*Shader, error) {
 	shader := &Shader{
 		program: binder{
 			restoreLoc: gl.CURRENT_PROGRAM,
@@ -29,7 +26,6 @@ func NewShader(vertexShader, fragmentShader string, uniformFmt AttrFormat) (*Sha
 				gl.UseProgram(obj)
 			},
 		},
-		uniformFmt: uniformFmt,
 	}
 
 	var vshader, fshader uint32
@@ -99,15 +95,6 @@ func NewShader(vertexShader, fragmentShader string, uniformFmt AttrFormat) (*Sha
 		}
 	}
 
-	// uniforms
-        if uniformFmt != nil {
-		shader.uniformLoc = make([]int32, len(uniformFmt))
-                for i, uniform := range uniformFmt {
-                        loc := gl.GetUniformLocation(shader.program.obj, gl.Str(uniform.Name+"\x00"))
-                        shader.uniformLoc[i] = loc
-                }
-        }
-
 	runtime.SetFinalizer(shader, (*Shader).delete)
 
 	return shader, nil
@@ -122,90 +109,6 @@ func (s *Shader) delete() {
 // ID returns the OpenGL ID of this Shader.
 func (s *Shader) ID() uint32 {
 	return s.program.obj
-}
-
-// UniformFormat returns the uniform attribute format of this Shader. Do not change it.
-func (s *Shader) UniformFormat() AttrFormat {
-	return s.uniformFmt
-}
-
-// SetUniformAttr sets the value of a uniform attribute of this Shader. The attribute is
-// specified by the index in the Shader's uniform format.
-//
-// If the uniform attribute does not exist in the Shader, this method returns false.
-//
-// Supplied value must correspond to the type of the attribute. Correct types are these
-// (right-hand is the type of the value):
-//   Attr{Type: Int}:   int32
-//   Attr{Type: Float}: float32
-//   Attr{Type: Vec2}:  mgl32.Vec2
-//   Attr{Type: Vec3}:  mgl32.Vec3
-//   Attr{Type: Vec4}:  mgl32.Vec4
-//   Attr{Type: Mat2}:  mgl32.Mat2
-//   Attr{Type: Mat23}: mgl32.Mat2x3
-//   Attr{Type: Mat24}: mgl32.Mat2x4
-//   Attr{Type: Mat3}:  mgl32.Mat3
-//   Attr{Type: Mat32}: mgl32.Mat3x2
-//   Attr{Type: Mat34}: mgl32.Mat3x4
-//   Attr{Type: Mat4}:  mgl32.Mat4
-//   Attr{Type: Mat42}: mgl32.Mat4x2
-//   Attr{Type: Mat43}: mgl32.Mat4x3
-// No other types are supported.
-//
-// The Shader must be bound before calling this method.
-func (s *Shader) SetUniformAttr(uniform int, value interface{}) (ok bool) {
-	if s.uniformFmt == nil || s.uniformLoc[uniform] < 0 {
-		return false
-	}
-
-	switch s.uniformFmt[uniform].Type {
-	case Int:
-		value := value.(int32)
-		gl.Uniform1iv(s.uniformLoc[uniform], 1, &value)
-	case Float:
-		value := value.(float32)
-		gl.Uniform1fv(s.uniformLoc[uniform], 1, &value)
-	case Vec2:
-		value := value.(mgl32.Vec2)
-		gl.Uniform2fv(s.uniformLoc[uniform], 1, &value[0])
-	case Vec3:
-		value := value.(mgl32.Vec3)
-		gl.Uniform3fv(s.uniformLoc[uniform], 1, &value[0])
-	case Vec4:
-		value := value.(mgl32.Vec4)
-		gl.Uniform4fv(s.uniformLoc[uniform], 1, &value[0])
-	case Mat2:
-		value := value.(mgl32.Mat2)
-		gl.UniformMatrix2fv(s.uniformLoc[uniform], 1, false, &value[0])
-	case Mat23:
-		value := value.(mgl32.Mat2x3)
-		gl.UniformMatrix2x3fv(s.uniformLoc[uniform], 1, false, &value[0])
-	case Mat24:
-		value := value.(mgl32.Mat2x4)
-		gl.UniformMatrix2x4fv(s.uniformLoc[uniform], 1, false, &value[0])
-	case Mat3:
-		value := value.(mgl32.Mat3)
-		gl.UniformMatrix3fv(s.uniformLoc[uniform], 1, false, &value[0])
-	case Mat32:
-		value := value.(mgl32.Mat3x2)
-		gl.UniformMatrix3x2fv(s.uniformLoc[uniform], 1, false, &value[0])
-	case Mat34:
-		value := value.(mgl32.Mat3x4)
-		gl.UniformMatrix3x4fv(s.uniformLoc[uniform], 1, false, &value[0])
-	case Mat4:
-		value := value.(mgl32.Mat4)
-		gl.UniformMatrix4fv(s.uniformLoc[uniform], 1, false, &value[0])
-	case Mat42:
-		value := value.(mgl32.Mat4x2)
-		gl.UniformMatrix4x2fv(s.uniformLoc[uniform], 1, false, &value[0])
-	case Mat43:
-		value := value.(mgl32.Mat4x3)
-		gl.UniformMatrix4x3fv(s.uniformLoc[uniform], 1, false, &value[0])
-	default:
-		panic("set uniform attr: invalid attribute type")
-	}
-
-	return true
 }
 
 // Begin binds the Shader program. This is necessary before using the Shader.

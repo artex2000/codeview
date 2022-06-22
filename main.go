@@ -4,6 +4,7 @@ import (
         "fmt"
 
         "github.com/artex2000/codeview/thirdparty/pixelgl"
+        "github.com/artex2000/codeview/thirdparty/glhf"
         "github.com/artex2000/codeview/font"
        )
 
@@ -33,12 +34,32 @@ func run() {
                 panic (err)
         }
 
-        render, err := NewRender(VertexShader, FragmentShader)
-        if err != nil {
-                panic (err)
+        /*
+        Uniforms := pixelgl.VariableList{
+                        { Name: "Model",        Type: glhf.Mat4 },
+                        { Name: "View",         Type: glhf.Mat4 },
+                        { Name: "Projection",   Type: glhf.Mat4 },
+                    }
+        */
+
+        Attributes := pixelgl.VariableList{
+                        { Name: "VertexPosition", Type: glhf.Vec3 },
+                        { Name: "VertexColor",    Type: glhf.Vec3 },
+                    }
+
+        render := pixelgl.NewRender(VertexShader, FragmentShader, nil, Attributes)
+
+        vs := []float32 {
+                -0.5, -0.5, 0.0, 1.0, 0.0, 0.0,
+                 0.5, -0.5, 0.0, 0.0, 1.0, 0.0,
+                 0.0,  0.35, 0.0, 0.0, 0.0, 1.0,
         }
 
-        fmt.Printf("Created shader with id %x\n", render.Shader.ID())
+        is := []uint32 { 0, 1, 2 }
+
+        render.SetVertices(vs, is)
+//        render.SetTranslationMatrix(0, 0)
+        win.SetCanvas(render)
 
         for !win.Closed() {
 //                win.Clear()
