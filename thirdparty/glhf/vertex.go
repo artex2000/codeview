@@ -12,6 +12,7 @@ type VertexArray struct {
 	vao, vbo, veo   binder
         indices         []uint32
         vertices        []float32
+        stride          int
 }
 
 func NewVertexArray(shader *Shader, attributes AttrFormat) (*VertexArray, error) {
@@ -46,7 +47,7 @@ func NewVertexArray(shader *Shader, attributes AttrFormat) (*VertexArray, error)
 	defer va.vbo.bind().restore()
 
 
-        stride := attributes.Size()
+        va.stride = attributes.Size()
         offset := 0
 	for _, attr := range attributes {
 		loc := gl.GetAttribLocation(shader.program.obj, gl.Str(attr.Name+"\x00"))
@@ -70,7 +71,7 @@ func NewVertexArray(shader *Shader, attributes AttrFormat) (*VertexArray, error)
 			size,
 			gl.FLOAT,
 			false,
-			int32(stride),
+			int32(va.stride),
 			uintptr(offset),
 		)
 		gl.EnableVertexAttribArray(uint32(loc))
@@ -112,4 +113,8 @@ func (va *VertexArray) Draw(count int32) {
 func (va *VertexArray) SetVertexData(v []float32, i []uint32) {
 	gl.BufferData(gl.ARRAY_BUFFER, len(v)*4, gl.Ptr(v), gl.DYNAMIC_DRAW)
 	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, len(i)*4, gl.Ptr(i), gl.DYNAMIC_DRAW)
+}
+
+func (va *VertexArray) Stride() int {
+        return va.stride
 }

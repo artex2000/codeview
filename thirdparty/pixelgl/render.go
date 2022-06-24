@@ -27,11 +27,13 @@ type Render struct {
         Shader          *glhf.Shader
         VertexArray     *glhf.VertexArray
         Uniforms        []*ShaderVar
-        count           int32
 
         Model           mgl32.Mat4
         View            mgl32.Mat4
         Projection      mgl32.Mat4
+
+        Vertices        []float32
+        Indices         []uint32
 }
 
 func NewRender(vert, frag string, uniforms, attributes VariableList) *Render {
@@ -145,32 +147,60 @@ func (r *Render) SetUniform(v *ShaderVar, value interface{}) {
 	}
 }
 
-func (r *Render) SetTranslationMatrix(width, height float32) {
-        r.Model = mgl32.Ident4()
-        r.View  = mgl32.Ident4()
-        r.Projection = mgl32.Ident4()
-        //r.Projection = mgl32.Ortho2D(0, width, 0, height)
+func (r *Render) SetModelMatrix(m mgl32.Mat4) {
+        r.Model = m
+}
 
+func (r *Render) SetViewMatrix(m mgl32.Mat4) {
+        r.View = m
+}
+
+func (r *Render) SetProjectionMatrix(m mgl32.Mat4) {
+        r.Projection = m
+}
+
+func (r *Render) SetTransform(model, view, projection bool) {
         mainthread.Call(func() {
-                r.SetUniformByName("Model", r.Model)
-                r.SetUniformByName("View",  r.View)
-                r.SetUniformByName("Projection", r.Projection)
+                r.Shader.Begin()
+                if model {
+                        r.SetUniformByName("Model", r.Model)
+                }
+                if view {
+                        r.SetUniformByName("View",  r.View)
+                }
+                if projection {
+                        r.SetUniformByName("Projection", r.Projection)
+                }
+                r.Shader.End()
         })
 }
 
-func (r *Render) SetVertices(f []float32, i []uint32) {
+func (r *Render) SetVertices() {
         mainthread.Call(func() {
                 r.VertexArray.Begin()
-                r.VertexArray.SetVertexData(f, i)
+                r.VertexArray.SetVertexData(r.Vertices, r.Indices)
                 r.VertexArray.End()
         })
-        r.count = int32(len(i))
 }
 
+func (r *Render) PushTriangle(vert []float32) {
+        r.Vertices = append(r.Vertices, vert...)
+        idx := uint32(len(r.Indices))
+        r.Indices = append(r.Indices, idx, idx+1, idx+2)
+}
+
+func (r *Render) PushQuad(vert []float32) {
+        r.Vertices = append(r.Vertices, vert...)
+        idx := uint32(len(r.Indices))
+        r.Indices = append(r.Indices, idx, idx+1, idx+2, idx, idx+2, idx+3)
+}
+
+//Usually this function is part of the sequence Clear/Draw/SwapBuffers
+//So it's placed into mainthread by sequence executor
 func (r *Render) Draw() {
         r.Shader.Begin()
         r.VertexArray.Begin()
-        r.VertexArray.Draw(r.count)
+        r.VertexArray.Draw(int32(len(r.Indices)))
         r.VertexArray.End()
         r.Shader.End()
 }
