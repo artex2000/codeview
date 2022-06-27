@@ -285,7 +285,7 @@ func (w *Window) SwapBuffers() {
 	mainthread.Call(func() {
 		w.begin() //make context current if needed
 
-		glhf.Clear(0.8, 0.9, 0.9, 0.0)
+		glhf.Clear(0.0, 0.0, 0.0, 0.0)
                 if w.canvas != nil {
                         w.canvas.Draw()
                 }

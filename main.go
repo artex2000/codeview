@@ -2,6 +2,11 @@ package main
 
 import (
         "fmt"
+        //"os"
+        //"image"
+        //"image/png"
+        //"image/draw"
+        "image/color"
 
 	"github.com/go-gl/mathgl/mgl32"
         "github.com/artex2000/codeview/thirdparty/pixelgl"
@@ -30,6 +35,21 @@ func run() {
 
         fmt.Printf("Asc %d, Dsc %d, Lg %d, Adv %d\n", font.Ascender, font.Descender, font.Linegap, font.SpaceAdvance)
 
+        /*
+        //Load PNG for testing
+        pic, err := os.Open("./assets/Squares.png")
+        if err != nil {
+                panic(err)
+        }
+        img, err := png.Decode(pic)
+        if err != nil {
+                panic(err)
+        }
+        rgba := image.NewRGBA(image.Rect(0, 0, img.Bounds().Dx(), img.Bounds().Dy()))
+        draw.Draw(rgba, rgba.Bounds(), img, img.Bounds().Min, draw.Src)
+        */
+
+
         win, err := pixelgl.NewWindow(cfg)
         if err != nil {
                 panic (err)
@@ -39,37 +59,73 @@ func run() {
                         { Name: "Model",        Type: glhf.Mat4 },
                         { Name: "View",         Type: glhf.Mat4 },
                         { Name: "Projection",   Type: glhf.Mat4 },
+                        { Name: "Foreground",   Type: glhf.Vec4 },
+                        { Name: "Background",   Type: glhf.Vec4 },
                     }
 
         Attributes := pixelgl.VariableList{
                         { Name: "VertexPosition", Type: glhf.Vec3 },
-                        { Name: "VertexColor",    Type: glhf.Vec3 },
+                        { Name: "TextureCoord",   Type: glhf.Vec2 },
                     }
 
-        r := pixelgl.NewRender(VertexShader, FragmentShader, Uniforms, Attributes)
+        r := pixelgl.NewRender(VertexShader, FragmentShader, Uniforms, Attributes, font.Atlas)
 
-        vs := []float32 {
-                -0.5, -0.5, 0.0, 1.0, 0.0, 0.0,
-                 0.5, -0.5, 0.0, 0.0, 1.0, 0.0,
-                 0.0,  0.35, 0.0, 0.0, 0.0, 1.0,
-        }
-
-        model := mgl32.Ident4()
-
+        //Camera setup
         eye    := mgl32.Vec3{ 0.0, 0.0, 2.0 }
         center := mgl32.Vec3{ 0.0, 0.0, 0.0 }
         up     := mgl32.Vec3{ 0.0, 1.0, 0.0 }
-        view  := mgl32.LookAtV(eye, center, up)
 
-        projection := mgl32.Ortho(-1, 1, -1, 1, 0.1, 5)
-        //projection = mgl32.Ortho(0, width, 0, height, 0.1, 5)
+        //Projection setup (will match viewport width/height)
+        w, h := float32(win.Bounds().W()), float32(win.Bounds().H())
 
-        r.SetModelMatrix(model)
-        r.SetViewMatrix(view)
-        r.SetProjectionMatrix(projection)
+        //Transform setup
+        r.Model      = mgl32.Ident4()
+        r.View       = mgl32.LookAtV(eye, center, up)
+        r.Projection = mgl32.Ortho(0, w, 0, h, 0.1, 5)
+
+        r.Foreground = color.RGBA {R: 0xff, G: 0xff, B: 0xff, A: 0x1}
+        r.Background = color.RGBA {R: 0x0, G: 0x0, B: 0x0, A: 0x1}
         r.SetTransform(true, true, true)
+        r.SetColors()
+        r.SetTexture("Texture")
 
-        r.PushTriangle(vs)
+        //Push glyph quads
+        hello := "Hello Master"
+
+        //Find starting point
+        midY := (h - float32(font.Ascender + font.Descender + font.Linegap)) / 2
+        midX := (w - float32(len(hello) * font.SpaceAdvance)) / 2
+
+        penX, penY := midX, midY
+        for _, s := range hello {
+                if s == rune(' ') {
+                        penX += float32(font.SpaceAdvance)
+                        continue
+                }
+
+                g, ok := font.Glyphs[rune(s)]
+                if !ok {
+                        continue
+                }
+                quad := []float32{
+                        penX + float32(g.OffsetX), penY + float32(g.OffsetY), 0, g.TexS0, g.TexT0,        //left top
+                        penX + float32(g.OffsetX), penY + float32(g.OffsetY - g.Height), 0, g.TexS0, g.TexT1,        //left bottom
+                        penX + float32(g.OffsetX + g.Width), penY + float32(g.OffsetY - g.Height), 0, g.TexS1, g.TexT1,        //right bottom
+                        penX + float32(g.OffsetX + g.Width), penY + float32(g.OffsetY), 0, g.TexS1, g.TexT0,        //right top
+                      }
+                r.PushQuad(quad)
+                penX += float32(g.Advance)
+        }
+        /*
+        quad := []float32{
+                100, 800, 0, 0, 0,
+                100, 800 - 256, 0, 0, 1,
+                356, 800 - 256, 0, 1, 1,
+                356, 800, 0, 1, 0,
+        }
+        r.PushQuad(quad)
+        */
+
         r.SetVertices()
 
         win.SetCanvas(r)

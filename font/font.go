@@ -114,7 +114,12 @@ func InitFontFromFile(fname string, size int) (*Monofont, error) {
                 }
 
                 //we're adding 1px padding on the right and bottom so atlas neighbours won't affect colors
-                g := &glyph{metrics: m, image : img, atlasW : img.Bounds().Dx() + 1, atlasH : img.Bounds().Dy() + 1}
+                g := &glyph{char: i,
+                            metrics: m, 
+                            image : img, 
+                            atlasW : img.Bounds().Dx() + 1, 
+                            atlasH : img.Bounds().Dy() + 1,
+                   }
                 f = append(f, g)
         }
 
@@ -124,7 +129,7 @@ func InitFontFromFile(fname string, size int) (*Monofont, error) {
         //TODO: Expand resulting atlas if necessary to square multiple of 4 pixels
         w, h := binpack.Pack(f, 256, 256)
         if (w > 256) || (h > 256) {
-                return nil, fmt.Errorf("Atlass too small")
+                return nil, fmt.Errorf("Atlas too small")
         }
 
         mf.Atlas = image.NewRGBA(image.Rect(0, 0, w, h))

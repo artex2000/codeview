@@ -2,6 +2,8 @@ package pixelgl
 
 import (
         "fmt"
+        "image"
+        "image/color"
 
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/faiface/mainthread"
@@ -26,21 +28,26 @@ type ShaderVar struct {
 type Render struct {
         Shader          *glhf.Shader
         VertexArray     *glhf.VertexArray
+        Texture         *glhf.Texture
         Uniforms        []*ShaderVar
 
         Model           mgl32.Mat4
         View            mgl32.Mat4
         Projection      mgl32.Mat4
 
+        Foreground      color.RGBA
+        Background      color.RGBA
+
         Vertices        []float32
         Indices         []uint32
 }
 
-func NewRender(vert, frag string, uniforms, attributes VariableList) *Render {
+func NewRender(vert, frag string, uniforms, attributes VariableList, texture *image.RGBA) *Render {
         r := &Render{}
 
         var shader *glhf.Shader
         var vertexArray *glhf.VertexArray
+        var tex *glhf.Texture
 
         if attributes == nil {
                 panic("Can't init shader without vertex attributes")
@@ -50,7 +57,7 @@ func NewRender(vert, frag string, uniforms, attributes VariableList) *Render {
                 var err error
                 shader, err = glhf.NewShader(vert, frag)
                 if err != nil {
-                        panic(fmt.Sprintf("Shader compile error - %w", err))
+                        panic(fmt.Errorf("Shader compile error - %w", err))
                 }
 
                 va := make(glhf.AttrFormat, len(attributes))
@@ -60,28 +67,26 @@ func NewRender(vert, frag string, uniforms, attributes VariableList) *Render {
 
                 vertexArray, err = glhf.NewVertexArray(shader, va)
                 if err != nil {
-                        panic(fmt.Sprintf("Vertex array init error - %w", err))
+                        panic(fmt.Errorf("Vertex array init error - %w", err))
                 }
+
+                w, h := texture.Bounds().Dx(), texture.Bounds().Dy()
+                tex = glhf.NewTexture(w, h, true, texture.Pix)
         })
 
-        if uniforms != nil {
-                r.Uniforms = make([]*ShaderVar, len(uniforms))
-                for i, u := range uniforms {
-                        r.Uniforms[i] = &ShaderVar{Name: u.Name, Type: u.Type}
-                }
+        r.Uniforms = make([]*ShaderVar, len(uniforms))
+        for i, u := range uniforms {
+                r.Uniforms[i] = &ShaderVar{Name: u.Name, Type: u.Type}
         }
 
         r.VertexArray = vertexArray 
+        r.Texture     = tex 
         r.Shader      = shader
         return r
 }
 
 //Must be called from main thread
 func (r *Render) SetUniformByName(Name string, value interface{}) {
-        if r.Uniforms == nil {
-                return
-        }
-
         for _, v := range r.Uniforms {
                 if v.Name == Name {
                         if !v.LocationValid {
@@ -147,18 +152,6 @@ func (r *Render) SetUniform(v *ShaderVar, value interface{}) {
 	}
 }
 
-func (r *Render) SetModelMatrix(m mgl32.Mat4) {
-        r.Model = m
-}
-
-func (r *Render) SetViewMatrix(m mgl32.Mat4) {
-        r.View = m
-}
-
-func (r *Render) SetProjectionMatrix(m mgl32.Mat4) {
-        r.Projection = m
-}
-
 func (r *Render) SetTransform(model, view, projection bool) {
         mainthread.Call(func() {
                 r.Shader.Begin()
@@ -175,11 +168,31 @@ func (r *Render) SetTransform(model, view, projection bool) {
         })
 }
 
+func (r *Render) SetColors() {
+        fg := colorToVec4(r.Foreground)
+        bg := colorToVec4(r.Background)
+        mainthread.Call(func() {
+                r.Shader.Begin()
+                r.SetUniformByName("Foreground", fg)
+                r.SetUniformByName("Background", bg)
+                r.Shader.End()
+        })
+}
+
 func (r *Render) SetVertices() {
         mainthread.Call(func() {
                 r.VertexArray.Begin()
                 r.VertexArray.SetVertexData(r.Vertices, r.Indices)
                 r.VertexArray.End()
+        })
+}
+
+func (r *Render) SetTexture(Name string) {
+        mainthread.Call(func() {
+                r.Shader.Begin()
+                Location := gl.GetUniformLocation(r.Shader.ID(), gl.Str(Name + "\x00"))
+                gl.Uniform1i(Location, 0) //we assign texture location to texture unit index 0
+                r.Shader.End()
         })
 }
 
@@ -191,7 +204,7 @@ func (r *Render) PushTriangle(vert []float32) {
 
 func (r *Render) PushQuad(vert []float32) {
         r.Vertices = append(r.Vertices, vert...)
-        idx := uint32(len(r.Indices))
+        idx := uint32(len(r.Indices) / 6 * 4)
         r.Indices = append(r.Indices, idx, idx+1, idx+2, idx, idx+2, idx+3)
 }
 
@@ -200,7 +213,16 @@ func (r *Render) PushQuad(vert []float32) {
 func (r *Render) Draw() {
         r.Shader.Begin()
         r.VertexArray.Begin()
+        r.Texture.Begin()
         r.VertexArray.Draw(int32(len(r.Indices)))
+        r.Texture.End()
         r.VertexArray.End()
         r.Shader.End()
+}
+
+func colorToVec4(c color.RGBA) mgl32.Vec4 {
+        r := float32(c.R) / 255
+        g := float32(c.R) / 255
+        b := float32(c.R) / 255
+        return mgl32.Vec4{r, g, b, 1.0}
 }
