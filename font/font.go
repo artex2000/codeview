@@ -121,6 +121,7 @@ func InitFontFromFile(fname string, size int) (*Monofont, error) {
                             atlasH : img.Bounds().Dy() + 1,
                    }
                 f = append(f, g)
+                //fmt.Printf("%d - %d ......... %d - %d\n", m.Width, m.Height, img.Bounds().Dx(), img.Bounds().Dy())
         }
 
         //Sort glyphs by height - it gives good results with binpack
@@ -141,14 +142,15 @@ func InitFontFromFile(fname string, size int) (*Monofont, error) {
                 gl := Glyph{}
                 gl.OffsetX = g.metrics.HorizontalBearingX
                 gl.OffsetY = g.metrics.HorizontalBearingY
-                gl.Width   = g.metrics.Width
+                //gl.Width   = g.metrics.Width
+                gl.Width   = g.atlasW - 1
                 gl.Height  = g.metrics.Height
                 gl.Advance = g.metrics.AdvanceWidth
 
                 gl.TexS0 = float32(g.atlasX) / float32(w)
                 gl.TexT0 = float32(g.atlasY) / float32(h)
                 gl.TexS1 = float32(g.atlasX + g.atlasW - 1) / float32(w)
-                gl.TexT1 = float32(g.atlasY + g.atlasH - 1) / float32(h)
+                gl.TexT1 = float32(g.atlasY + g.atlasH) / float32(h)
 
                 //Find biggest ascender
                 if gl.OffsetY > 0 {

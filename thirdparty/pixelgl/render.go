@@ -3,7 +3,6 @@ package pixelgl
 import (
         "fmt"
         "image"
-        "image/color"
 
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/faiface/mainthread"
@@ -34,9 +33,6 @@ type Render struct {
         Model           mgl32.Mat4
         View            mgl32.Mat4
         Projection      mgl32.Mat4
-
-        Foreground      color.RGBA
-        Background      color.RGBA
 
         Vertices        []float32
         Indices         []uint32
@@ -168,23 +164,17 @@ func (r *Render) SetTransform(model, view, projection bool) {
         })
 }
 
-func (r *Render) SetColors() {
-        fg := colorToVec4(r.Foreground)
-        bg := colorToVec4(r.Background)
-        mainthread.Call(func() {
-                r.Shader.Begin()
-                r.SetUniformByName("Foreground", fg)
-                r.SetUniformByName("Background", bg)
-                r.Shader.End()
-        })
-}
-
 func (r *Render) SetVertices() {
         mainthread.Call(func() {
                 r.VertexArray.Begin()
                 r.VertexArray.SetVertexData(r.Vertices, r.Indices)
                 r.VertexArray.End()
         })
+}
+
+func (r *Render) ResetVertices() {
+        r.Vertices = r.Vertices[:0]
+        r.Indices = r.Indices[:0]
 }
 
 func (r *Render) SetTexture(Name string) {
@@ -220,9 +210,22 @@ func (r *Render) Draw() {
         r.Shader.End()
 }
 
+/*
+func (r *Render) SetColors() {
+        fg := colorToVec4(r.Foreground)
+        bg := colorToVec4(r.Background)
+        mainthread.Call(func() {
+                r.Shader.Begin()
+                r.SetUniformByName("Foreground", fg)
+                r.SetUniformByName("Background", bg)
+                r.Shader.End()
+        })
+}
+
 func colorToVec4(c color.RGBA) mgl32.Vec4 {
         r := float32(c.R) / 255
         g := float32(c.R) / 255
         b := float32(c.R) / 255
         return mgl32.Vec4{r, g, b, 1.0}
 }
+*/

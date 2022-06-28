@@ -16,6 +16,7 @@ func Init() {
 	gl.Enable(gl.SCISSOR_TEST)
 	gl.Enable(gl.BLEND)
 	gl.BlendEquation(gl.FUNC_ADD)
+	gl.BlendFunc(gl.SRC1_COLOR, gl.ONE_MINUS_SRC1_COLOR)
 }
 
 // Clear clears the current framebuffer or window with the given color.

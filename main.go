@@ -6,7 +6,9 @@ import (
         //"image"
         //"image/png"
         //"image/draw"
-        "image/color"
+        "math"
+        "math/rand"
+        "time"
 
 	"github.com/go-gl/mathgl/mgl32"
         "github.com/artex2000/codeview/thirdparty/pixelgl"
@@ -23,17 +25,17 @@ func main () {
 func run() {
         cfg := pixelgl.WindowConfig{
                 Title:     "Codeview",
-                Bounds:    pixelgl.R(100, 100, 1600, 1600),
+                Bounds:    pixelgl.R(10, 10, 3700, 2100),
                 Resizable: true,
                 VSync:     true,
         }
 
-        font, err := font.InitFontFromFile(fontFile, 32)
+        font, err := font.InitFontFromFile(fontFile, 18)
         if err != nil {
                 panic (err)
         }
 
-        fmt.Printf("Asc %d, Dsc %d, Lg %d, Adv %d\n", font.Ascender, font.Descender, font.Linegap, font.SpaceAdvance)
+//        fmt.Printf("Asc %d, Dsc %d, Lg %d, Adv %d\n", font.Ascender, font.Descender, font.Linegap, font.SpaceAdvance)
 
         /*
         //Load PNG for testing
@@ -59,12 +61,11 @@ func run() {
                         { Name: "Model",        Type: glhf.Mat4 },
                         { Name: "View",         Type: glhf.Mat4 },
                         { Name: "Projection",   Type: glhf.Mat4 },
-                        { Name: "Foreground",   Type: glhf.Vec4 },
-                        { Name: "Background",   Type: glhf.Vec4 },
                     }
 
         Attributes := pixelgl.VariableList{
                         { Name: "VertexPosition", Type: glhf.Vec3 },
+                        { Name: "VertexColor",    Type: glhf.Vec3 },
                         { Name: "TextureCoord",   Type: glhf.Vec2 },
                     }
 
@@ -77,61 +78,75 @@ func run() {
 
         //Projection setup (will match viewport width/height)
         w, h := float32(win.Bounds().W()), float32(win.Bounds().H())
+        iw, ih := int(math.Floor(win.Bounds().W())), int(math.Floor(win.Bounds().H()))
 
         //Transform setup
         r.Model      = mgl32.Ident4()
         r.View       = mgl32.LookAtV(eye, center, up)
         r.Projection = mgl32.Ortho(0, w, 0, h, 0.1, 5)
 
-        r.Foreground = color.RGBA {R: 0xff, G: 0xff, B: 0xff, A: 0x1}
-        r.Background = color.RGBA {R: 0x0, G: 0x0, B: 0x0, A: 0x1}
         r.SetTransform(true, true, true)
-        r.SetColors()
-        r.SetTexture("Texture")
+        //r.SetTexture("Texture")
 
-        //Push glyph quads
-        hello := "Hello Master"
+        border := 5     //apron size in pixels
+        lineSpace := font.Ascender + font.Descender + font.Linegap
+        //Calculate how many symbols we can have on the screen with 5px bounds
+        cols := (iw - 2 * border) / font.SpaceAdvance
+        rows := (ih - 2 * border) / lineSpace
 
-        //Find starting point
-        midY := (h - float32(font.Ascender + font.Descender + font.Linegap)) / 2
-        midX := (w - float32(len(hello) * font.SpaceAdvance)) / 2
-
-        penX, penY := midX, midY
-        for _, s := range hello {
-                if s == rune(' ') {
-                        penX += float32(font.SpaceAdvance)
-                        continue
-                }
-
-                g, ok := font.Glyphs[rune(s)]
-                if !ok {
-                        continue
-                }
-                quad := []float32{
-                        penX + float32(g.OffsetX), penY + float32(g.OffsetY), 0, g.TexS0, g.TexT0,        //left top
-                        penX + float32(g.OffsetX), penY + float32(g.OffsetY - g.Height), 0, g.TexS0, g.TexT1,        //left bottom
-                        penX + float32(g.OffsetX + g.Width), penY + float32(g.OffsetY - g.Height), 0, g.TexS1, g.TexT1,        //right bottom
-                        penX + float32(g.OffsetX + g.Width), penY + float32(g.OffsetY), 0, g.TexS1, g.TexT0,        //right top
-                      }
-                r.PushQuad(quad)
-                penX += float32(g.Advance)
-        }
-        /*
-        quad := []float32{
-                100, 800, 0, 0, 0,
-                100, 800 - 256, 0, 0, 1,
-                356, 800 - 256, 0, 1, 1,
-                356, 800, 0, 1, 0,
-        }
-        r.PushQuad(quad)
-        */
-
-        r.SetVertices()
 
         win.SetCanvas(r)
 
         for !win.Closed() {
-//                win.Clear()
+                start := time.Now()
+
+                //Push glyph quads
+                //hello := "The quick brown fox jumps over the lazy dog. 1234567890"
+                extras := 10
+                hello := generateGlyphs(rows + extras, cols + extras)
+
+                penX, penY := float32(border), float32(ih - border)
+                for _, s := range hello {
+                        for _, c := range s {
+                                if c == rune(' ') {
+                                        penX += float32(font.SpaceAdvance)
+                                        continue
+                                }
+
+                                g, ok := font.Glyphs[rune(c)]
+                                if !ok {
+                                        continue
+                                }
+                                quad := []float32{
+                                        penX + float32(g.OffsetX), penY + float32(g.OffsetY), 0, 0, 0, 0, g.TexS0, g.TexT0,        //left top
+                                        penX + float32(g.OffsetX), penY + float32(g.OffsetY - g.Height), 0, 0, 0, 0, g.TexS0, g.TexT1,        //left bottom
+                                        penX + float32(g.OffsetX + g.Width), penY + float32(g.OffsetY - g.Height), 0, 0, 0, 0, g.TexS1, g.TexT1,        //right bottom
+                                        penX + float32(g.OffsetX + g.Width), penY + float32(g.OffsetY), 0, 0, 0, 0, g.TexS1, g.TexT0,        //right top
+                                }
+                                r.PushQuad(quad)
+                                penX += float32(g.Advance)
+                        }
+                        penX = float32(border)
+                        penY -= float32(lineSpace)
+                }
+
+                r.SetVertices()
                 win.Update()
+                r.ResetVertices()
+
+                elapsed := time.Since(start)
+                fmt.Printf("%d ms\n", elapsed.Milliseconds())
         }
+}
+
+func generateGlyphs(rows, cols int) []string {
+        out := make([]string, rows)
+        for i, _ := range out {
+                s := make([]byte, cols)
+                for j, _ := range s {
+                        s[j] = byte(rand.Intn(0x7f - 0x20) + 0x20)
+                }
+                out[i] = string(s)
+        }
+        return out
 }

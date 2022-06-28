@@ -208,7 +208,7 @@ func NewWindow(cfg WindowConfig) (*Window, error) {
                 w.window.SetFramebufferSizeCallback(func(_ *glfw.Window, width, height int) {
                         //fmt.Printf("Framebuffer size changed to %d : %d\n", width, height)
                         glhf.Bounds(0, 0, width, height)
-                        glhf.Clear(0.8, 0.8, 0.9, 0.0)
+                        glhf.Clear(1.0, 1.0, 1.0, 0.0)
                         if w.canvas != nil {
                                 w.canvas.Draw()
                         }
@@ -285,7 +285,7 @@ func (w *Window) SwapBuffers() {
 	mainthread.Call(func() {
 		w.begin() //make context current if needed
 
-		glhf.Clear(0.0, 0.0, 0.0, 0.0)
+		glhf.Clear(1.0, 1.0, 1.0, 0.0)
                 if w.canvas != nil {
                         w.canvas.Draw()
                 }
