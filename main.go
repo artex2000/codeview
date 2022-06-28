@@ -94,9 +94,18 @@ func run() {
         cols := (iw - 2 * border) / font.SpaceAdvance
         rows := (ih - 2 * border) / lineSpace
 
+        //calculate rect for frame duration
+        //It will be 5 symbols long, font.Ascender hight, because all symbols
+        //should not have a descender (all numbers and "ms" letters)
+        fW := float32(5 * font.SpaceAdvance)
+        fH := float32(font.Ascender)
+        //Put it in the right top corner
+        fX := w - fW
+        fY := h - fH
 
         win.SetCanvas(r)
 
+       frameDt := int64(0)
         for !win.Closed() {
                 start := time.Now()
 
@@ -105,29 +114,17 @@ func run() {
                 extras := 10
                 hello := generateGlyphs(rows + extras, cols + extras)
 
-                penX, penY := float32(border), float32(ih - border)
+                penX, penY := float32(border), float32(ih - border - font.Ascender)
                 for _, s := range hello {
-                        for _, c := range s {
-                                if c == rune(' ') {
-                                        penX += float32(font.SpaceAdvance)
-                                        continue
-                                }
-
-                                g, ok := font.Glyphs[rune(c)]
-                                if !ok {
-                                        continue
-                                }
-                                quad := []float32{
-                                        penX + float32(g.OffsetX), penY + float32(g.OffsetY), 0, 0, 0, 0, g.TexS0, g.TexT0,        //left top
-                                        penX + float32(g.OffsetX), penY + float32(g.OffsetY - g.Height), 0, 0, 0, 0, g.TexS0, g.TexT1,        //left bottom
-                                        penX + float32(g.OffsetX + g.Width), penY + float32(g.OffsetY - g.Height), 0, 0, 0, 0, g.TexS1, g.TexT1,        //right bottom
-                                        penX + float32(g.OffsetX + g.Width), penY + float32(g.OffsetY), 0, 0, 0, 0, g.TexS1, g.TexT0,        //right top
-                                }
-                                r.PushQuad(quad)
-                                penX += float32(g.Advance)
-                        }
+                        drawString(r, font, s, penX, penY, pixelgl.Black)
                         penX = float32(border)
                         penY -= float32(lineSpace)
+                }
+
+                if frameDt > 0 {
+                        s := fmt.Sprintf("%3dms", frameDt)
+                        drawQuad(r, fX, fY, fW, fH, pixelgl.Yellow)
+                        drawString(r, font, s, fX, fY, pixelgl.Red)
                 }
 
                 r.SetVertices()
@@ -135,8 +132,40 @@ func run() {
                 r.ResetVertices()
 
                 elapsed := time.Since(start)
-                fmt.Printf("%d ms\n", elapsed.Milliseconds())
+                frameDt = elapsed.Milliseconds()
         }
+}
+
+func drawString(r *pixelgl.Render, font *font.Monofont, s string, penX, penY float32, c pixelgl.RGBA) {
+        for _, t := range s {
+                if t == rune(' ') {
+                        penX += float32(font.SpaceAdvance)
+                        continue
+                }
+
+                g, ok := font.Glyphs[rune(t)]
+                if !ok {
+                        continue
+                }
+                quad := []float32{
+                        penX + float32(g.OffsetX), penY + float32(g.OffsetY),                      0, c.R, c.G, c.B, g.TexS0, g.TexT0,        //left top
+                        penX + float32(g.OffsetX), penY + float32(g.OffsetY - g.Height),           0, c.R, c.G, c.B, g.TexS0, g.TexT1,        //left bottom
+                        penX + float32(g.OffsetX + g.Width), penY + float32(g.OffsetY - g.Height), 0, c.R, c.G, c.B, g.TexS1, g.TexT1,        //right bottom
+                        penX + float32(g.OffsetX + g.Width), penY + float32(g.OffsetY),            0, c.R, c.G, c.B, g.TexS1, g.TexT0,        //right top
+                }
+                r.PushQuad(quad)
+                penX += float32(g.Advance)
+        }
+}
+
+func drawQuad(r *pixelgl.Render, x, y, w, h float32, c pixelgl.RGBA) {
+        quad := []float32{
+                      x, y + h,     0, c.R, c.G, c.B, -1, -1,       //left top
+                      x, y,         0, c.R, c.G, c.B, -1, -1,       //left bottom
+                      x + w, y,     0, c.R, c.G, c.B, -1, -1,       //right bottom
+                      x + w, y + h, 0, c.R, c.G, c.B, -1, -1,       //right bottom
+              }
+        r.PushQuad(quad)
 }
 
 func generateGlyphs(rows, cols int) []string {
