@@ -99,6 +99,9 @@ func run() {
         frameDt := int64(0)
         var hello []string
         freeze := false
+
+        closed := true
+
         for !win.Closed() {
                 start := time.Now()
 
@@ -116,6 +119,7 @@ func run() {
                         penY -= float32(lineSpace)
                 }
 
+                //draw frame duration in top right corner
                 if frameDt > 0 {
                         s := fmt.Sprintf("%dms", frameDt)
                         fW := float32(len(s) * font.SpaceAdvance)
@@ -127,6 +131,18 @@ func run() {
                         drawString(r, font, s, fX, fY, pixelgl.Red)
                 }
 
+                //draw directory triangle thing in top left corner
+                qW, qH := float32(lineSpace - 2), float32(lineSpace - 2)
+                qX, qY := float32(2), h - qH - 2
+                drawQuad(r, qX, qY, qW, qH, pixelgl.Yellow)
+                if closed {
+                        drawPointRight(r, qX, qY, qW, qH, pixelgl.Blue) 
+                } else {
+                        drawPointDown(r, qX, qY, qW, qH, pixelgl.Blue) 
+                }
+
+
+
                 r.SetVertices()
                 win.Update()
                 r.ResetVertices()
@@ -137,6 +153,7 @@ func run() {
                         case pixelgl.KeyPress:
                                 if e.Key == pixelgl.KeySpace {
                                         freeze = !freeze
+                                        closed = !closed
                                 } else if e.Key == pixelgl.KeyEscape {
                                         win.SetClosed(true)
                                 }
@@ -175,9 +192,27 @@ func drawQuad(r *pixelgl.Render, x, y, w, h float32, c pixelgl.RGBA) {
                       x, y + h,     0, c.R, c.G, c.B, -1, -1,       //left top
                       x, y,         0, c.R, c.G, c.B, -1, -1,       //left bottom
                       x + w, y,     0, c.R, c.G, c.B, -1, -1,       //right bottom
-                      x + w, y + h, 0, c.R, c.G, c.B, -1, -1,       //right bottom
+                      x + w, y + h, 0, c.R, c.G, c.B, -1, -1,       //right top
               }
         r.PushQuad(quad)
+}
+
+func drawPointRight(r *pixelgl.Render, x, y, w, h float32, c pixelgl.RGBA) {
+        triangle := []float32{
+                      x, y + h,         0, c.R, c.G, c.B, -1, -1,   //left top
+                      x, y,             0, c.R, c.G, c.B, -1, -1,   //left bottom
+                      x + w, y + h / 2, 0, c.R, c.G, c.B, -1, -1,   //right middle
+                  }
+        r.PushTriangle(triangle)
+}
+
+func drawPointDown(r *pixelgl.Render, x, y, w, h float32, c pixelgl.RGBA) {
+        triangle := []float32{
+                      x, y + h,     0, c.R, c.G, c.B, -1, -1,   //left top
+                      x + w / 2, y, 0, c.R, c.G, c.B, -1, -1,   //middle bottom
+                      x + w, y + h, 0, c.R, c.G, c.B, -1, -1,   //right top
+                  }
+        r.PushTriangle(triangle)
 }
 
 func generateGlyphs(rows, cols int) []string {

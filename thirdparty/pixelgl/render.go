@@ -188,13 +188,21 @@ func (r *Render) SetTexture(Name string) {
 
 func (r *Render) PushTriangle(vert []float32) {
         r.Vertices = append(r.Vertices, vert...)
-        idx := uint32(len(r.Indices))
+        //The way we construct our indices array the last element will always be the last vertex index
+        idx := uint32(0)
+        if len(r.Indices) != 0 {
+                idx = r.Indices[len(r.Indices)-1] + 1
+        }
         r.Indices = append(r.Indices, idx, idx+1, idx+2)
 }
 
 func (r *Render) PushQuad(vert []float32) {
         r.Vertices = append(r.Vertices, vert...)
-        idx := uint32(len(r.Indices) / 6 * 4)
+        //The way we construct our indices array the last element will always be the last vertex index
+        idx := uint32(0)
+        if len(r.Indices) != 0 {
+                idx = r.Indices[len(r.Indices)-1] + 1
+        }
         r.Indices = append(r.Indices, idx, idx+1, idx+2, idx, idx+2, idx+3)
 }
 
