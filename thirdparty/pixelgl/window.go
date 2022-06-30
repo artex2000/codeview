@@ -80,6 +80,27 @@ type WindowConfig struct {
 	SamplesMSAA int
 }
 
+type EventType byte
+const (
+        MousePress      = EventType(0)
+        MouseRelease    = EventType(1)
+        MouseMove       = EventType(2)
+        MouseScroll     = EventType(3)
+        MouseEnter      = EventType(4)
+        MouseLeave      = EventType(5)
+        KeyPress        = EventType(6)
+        KeyRelease      = EventType(7)
+        KeyRepeat       = EventType(8)
+)
+
+type Event struct {
+        Frame   uint64
+        X, Y    float32    
+        Key     Button          //used for both mouse/keyboard
+        Scan    int
+        Type    EventType
+}
+
 // Window is a window handler. Use this type to manipulate a window (input, drawing, etc.).
 type Window struct {
 	window *glfw.Window
@@ -88,25 +109,13 @@ type Window struct {
 	bounds             Rect
 	vsync              bool
 	cursorVisible      bool
-	cursorInsideWindow bool
+        frameCount         uint64
+        eventQueue         []Event
 
 	// need to save these to correctly restore a fullscreen window
 	restore struct {
 		xpos, ypos, width, height int
 	}
-
-	prevInp, currInp, tempInp struct {
-		mouse   Vec
-		buttons [KeyLast + 1]bool
-		repeat  [KeyLast + 1]bool
-		scroll  Vec
-		typed   string
-	}
-
-	pressEvents, tempPressEvents     [KeyLast + 1]bool
-	releaseEvents, tempReleaseEvents [KeyLast + 1]bool
-
-	prevJoy, currJoy, tempJoy joystickState
 }
 
 var currWin *Window
@@ -120,7 +129,9 @@ func NewWindow(cfg WindowConfig) (*Window, error) {
 		false: glfw.False,
 	}
 
-	w := &Window{bounds: cfg.Bounds, cursorVisible: true}
+        w := &Window{bounds: cfg.Bounds, cursorVisible: true}
+        w.eventQueue = make([]Event, 10)
+        w.frameCount = 0
 
 	flag := false
 	for _, v := range []int{0, 2, 4, 8, 16} {
@@ -292,6 +303,7 @@ func (w *Window) SwapBuffers() {
 		w.window.SwapBuffers()
 		w.end()
 	})
+        w.frameCount += 1
 }
 
 // SetClosed sets the closed flag of the Window.

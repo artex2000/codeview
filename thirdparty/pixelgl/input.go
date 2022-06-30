@@ -7,69 +7,6 @@ import (
 	"github.com/go-gl/glfw/v3.3/glfw"
 )
 
-// Pressed returns whether the Button is currently pressed down.
-func (w *Window) Pressed(button Button) bool {
-	return w.currInp.buttons[button]
-}
-
-// JustPressed returns whether the Button has been pressed in the last frame.
-func (w *Window) JustPressed(button Button) bool {
-	return w.pressEvents[button]
-}
-
-// JustReleased returns whether the Button has been released in the last frame.
-func (w *Window) JustReleased(button Button) bool {
-	return w.releaseEvents[button]
-}
-
-// Repeated returns whether a repeat event has been triggered on button.
-//
-// Repeat event occurs repeatedly when a button is held down for some time.
-func (w *Window) Repeated(button Button) bool {
-	return w.currInp.repeat[button]
-}
-
-// MousePosition returns the current mouse position in the Window's Bounds.
-func (w *Window) MousePosition() Vec {
-	return w.currInp.mouse
-}
-
-// MousePreviousPosition returns the previous mouse position in the Window's Bounds.
-func (w *Window) MousePreviousPosition() Vec {
-	return w.prevInp.mouse
-}
-
-// SetMousePosition positions the mouse cursor anywhere within the Window's Bounds.
-func (w *Window) SetMousePosition(v Vec) {
-	mainthread.Call(func() {
-		if (v.X >= 0 && v.X <= w.bounds.W()) &&
-			(v.Y >= 0 && v.Y <= w.bounds.H()) {
-			w.window.SetCursorPos(
-				v.X+w.bounds.Min.X,
-				(w.bounds.H()-v.Y)+w.bounds.Min.Y,
-			)
-			w.prevInp.mouse = v
-			w.currInp.mouse = v
-			w.tempInp.mouse = v
-		}
-	})
-}
-
-// MouseInsideWindow returns true if the mouse position is within the Window's Bounds.
-func (w *Window) MouseInsideWindow() bool {
-	return w.cursorInsideWindow
-}
-
-// MouseScroll returns the mouse scroll amount (in both axes) since the last call to Window.Update.
-func (w *Window) MouseScroll() Vec {
-	return w.currInp.scroll
-}
-
-// Typed returns the text typed on the keyboard since the last call to Window.Update.
-func (w *Window) Typed() string {
-	return w.currInp.typed
-}
-
 // Button is a keyboard or mouse button. Why distinguish?
 type Button int
 
@@ -359,66 +296,70 @@ var buttonNames = map[Button]string{
 func (w *Window) initInput() {
 	mainthread.Call(func() {
 		w.window.SetMouseButtonCallback(func(_ *glfw.Window, button glfw.MouseButton, action glfw.Action, mod glfw.ModifierKey) {
+                        e := Event{Frame: w.frameCount, Key: Button(button)}
 			switch action {
 			case glfw.Press:
-				w.tempPressEvents[Button(button)] = true
-				w.tempInp.buttons[Button(button)] = true
+                                e.Type = MousePress
 			case glfw.Release:
-				w.tempReleaseEvents[Button(button)] = true
-				w.tempInp.buttons[Button(button)] = false
+                                e.Type = MouseRelease
 			}
+                        w.eventQueue = append(w.eventQueue, e)
 		})
 
 		w.window.SetKeyCallback(func(_ *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
-			if key == glfw.KeyUnknown {
-				return
-			}
+                        e := Event{Frame: w.frameCount, Key: Button(key), Scan: scancode}
 			switch action {
 			case glfw.Press:
-				w.tempPressEvents[Button(key)] = true
-				w.tempInp.buttons[Button(key)] = true
+                                e.Type = KeyPress
 			case glfw.Release:
-				w.tempReleaseEvents[Button(key)] = true
-				w.tempInp.buttons[Button(key)] = false
+                                e.Type = KeyRelease
 			case glfw.Repeat:
-				w.tempInp.repeat[Button(key)] = true
+                                e.Type = KeyRepeat
 			}
+                        w.eventQueue = append(w.eventQueue, e)
 		})
 
 		w.window.SetCursorEnterCallback(func(_ *glfw.Window, entered bool) {
-			w.cursorInsideWindow = entered
+                        e := Event{Frame: w.frameCount}
+                        if entered {
+                                e.Type = MouseEnter
+                        } else {
+                                e.Type = MouseLeave
+                        }
+                        w.eventQueue = append(w.eventQueue, e)
 		})
 
 		w.window.SetCursorPosCallback(func(_ *glfw.Window, x, y float64) {
-			w.tempInp.mouse = V(
-				x+w.bounds.Min.X,
-				(w.bounds.H()-y)+w.bounds.Min.Y,
-			)
+                        e := Event{Frame: w.frameCount, Type: MouseMove, X: float32(x), Y: float32(y)}
+                        w.eventQueue = append(w.eventQueue, e)
 		})
 
-		w.window.SetScrollCallback(func(_ *glfw.Window, xoff, yoff float64) {
-			w.tempInp.scroll.X += xoff
-			w.tempInp.scroll.Y += yoff
+		w.window.SetScrollCallback(func(_ *glfw.Window, x, y float64) {
+                        e := Event{Frame: w.frameCount, Type: MouseScroll, X: float32(x), Y: float32(y)}
+                        w.eventQueue = append(w.eventQueue, e)
 		})
 
+                /*
 		w.window.SetCharCallback(func(_ *glfw.Window, r rune) {
 			w.tempInp.typed += string(r)
 		})
+                */
 	})
 }
 
 // UpdateInput polls window events. Call this function to poll window events
 // without swapping buffers. Note that the Update method invokes UpdateInput.
 func (w *Window) UpdateInput() {
+        w.eventQueue = w.eventQueue[:0]
 	mainthread.Call(func() {
 		glfw.PollEvents()
 	})
-	w.doUpdateInput()
 }
 
 // UpdateInputWait blocks until an event is received or a timeout. If timeout is 0
 // then it will wait indefinitely
 func (w *Window) UpdateInputWait(timeout time.Duration) {
+        w.eventQueue = w.eventQueue[:0]
 	mainthread.Call(func() {
 		if timeout <= 0 {
 			glfw.WaitEvents()
@@ -426,23 +367,8 @@ func (w *Window) UpdateInputWait(timeout time.Duration) {
 			glfw.WaitEventsTimeout(timeout.Seconds())
 		}
 	})
-	w.doUpdateInput()
 }
 
-// internal input bookkeeping
-func (w *Window) doUpdateInput() {
-	w.prevInp = w.currInp
-	w.currInp = w.tempInp
-
-	w.pressEvents = w.tempPressEvents
-	w.releaseEvents = w.tempReleaseEvents
-
-	// Clear last frame's temporary status
-	w.tempPressEvents = [KeyLast + 1]bool{}
-	w.tempReleaseEvents = [KeyLast + 1]bool{}
-	w.tempInp.repeat = [KeyLast + 1]bool{}
-	w.tempInp.scroll = ZV
-	w.tempInp.typed = ""
-
-	w.updateJoystickInput()
+func (w *Window) Events() []Event {
+        return w.eventQueue
 }

@@ -25,7 +25,7 @@ func main () {
 func run() {
         cfg := pixelgl.WindowConfig{
                 Title:     "Codeview",
-                Bounds:    pixelgl.R(10, 10, 3700, 2100),
+                Bounds:    pixelgl.R(0, 0, 1920, 1080),
                 Resizable: true,
                 VSync:     true,
         }
@@ -88,31 +88,26 @@ func run() {
         r.SetTransform(true, true, true)
         //r.SetTexture("Texture")
 
-        border := 5     //apron size in pixels
+        border := 2     //apron size in pixels
         lineSpace := font.Ascender + font.Descender + font.Linegap
         //Calculate how many symbols we can have on the screen with 5px bounds
         cols := (iw - 2 * border) / font.SpaceAdvance
         rows := (ih - 2 * border) / lineSpace
 
-        //calculate rect for frame duration
-        //It will be 5 symbols long, font.Ascender hight, because all symbols
-        //should not have a descender (all numbers and "ms" letters)
-        fW := float32(5 * font.SpaceAdvance)
-        fH := float32(font.Ascender)
-        //Put it in the right top corner
-        fX := w - fW
-        fY := h - fH
-
         win.SetCanvas(r)
 
-       frameDt := int64(0)
+        frameDt := int64(0)
+        var hello []string
+        freeze := false
         for !win.Closed() {
                 start := time.Now()
 
                 //Push glyph quads
                 //hello := "The quick brown fox jumps over the lazy dog. 1234567890"
                 extras := 10
-                hello := generateGlyphs(rows + extras, cols + extras)
+                if len(hello) == 0 || !freeze {
+                        hello = generateGlyphs(rows + extras, cols + extras)
+                }
 
                 penX, penY := float32(border), float32(ih - border - font.Ascender)
                 for _, s := range hello {
@@ -122,7 +117,12 @@ func run() {
                 }
 
                 if frameDt > 0 {
-                        s := fmt.Sprintf("%3dms", frameDt)
+                        s := fmt.Sprintf("%dms", frameDt)
+                        fW := float32(len(s) * font.SpaceAdvance)
+                        fH := float32(font.Ascender)
+                        //Put it in the right top corner
+                        fX := w - fW
+                        fY := h - fH
                         drawQuad(r, fX, fY, fW, fH, pixelgl.Yellow)
                         drawString(r, font, s, fX, fY, pixelgl.Red)
                 }
@@ -130,6 +130,18 @@ func run() {
                 r.SetVertices()
                 win.Update()
                 r.ResetVertices()
+
+                //process events
+                for _, e := range win.Events() {
+                        switch e.Type {
+                        case pixelgl.KeyPress:
+                                if e.Key == pixelgl.KeySpace {
+                                        freeze = !freeze
+                                } else if e.Key == pixelgl.KeyEscape {
+                                        win.SetClosed(true)
+                                }
+                        }
+                }
 
                 elapsed := time.Since(start)
                 frameDt = elapsed.Milliseconds()
