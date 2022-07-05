@@ -78,6 +78,8 @@ type WindowConfig struct {
 
 	//SamplesMSAA specifies the level of MSAA to be used. Must be one of 0, 2, 4, 8, 16. 0 to disable.
 	SamplesMSAA int
+
+        ClearColor  RGBA
 }
 
 type EventType byte
@@ -111,6 +113,7 @@ type Window struct {
 	cursorVisible      bool
         frameCount         uint64
         eventQueue         []Event
+        clearColor         RGBA
 
 	// need to save these to correctly restore a fullscreen window
 	restore struct {
@@ -132,6 +135,7 @@ func NewWindow(cfg WindowConfig) (*Window, error) {
         w := &Window{bounds: cfg.Bounds, cursorVisible: true}
         w.eventQueue = make([]Event, 10)
         w.frameCount = 0
+        w.clearColor = cfg.ClearColor
 
 	flag := false
 	for _, v := range []int{0, 2, 4, 8, 16} {
@@ -219,7 +223,7 @@ func NewWindow(cfg WindowConfig) (*Window, error) {
                 w.window.SetFramebufferSizeCallback(func(_ *glfw.Window, width, height int) {
                         //fmt.Printf("Framebuffer size changed to %d : %d\n", width, height)
                         glhf.Bounds(0, 0, width, height)
-                        glhf.Clear(1.0, 1.0, 1.0, 0.0)
+                        glhf.Clear(w.clearColor.R, w.clearColor.G, w.clearColor.B, 0.0)
                         if w.canvas != nil {
                                 w.canvas.Draw()
                         }
@@ -296,7 +300,7 @@ func (w *Window) SwapBuffers() {
 	mainthread.Call(func() {
 		w.begin() //make context current if needed
 
-		glhf.Clear(1.0, 1.0, 1.0, 0.0)
+                glhf.Clear(w.clearColor.R, w.clearColor.G, w.clearColor.B, 0.0)
                 if w.canvas != nil {
                         w.canvas.Draw()
                 }
@@ -518,4 +522,9 @@ func (w *Window) SetClipboard(str string) {
 // SetCanvas sets whether the Window's Update should synchronize with the monitor refresh rate.
 func (w *Window) SetCanvas(canvas *Render) {
 	w.canvas = canvas
+}
+
+// SetClearColor will set the color for gl.Clear() call
+func (w *Window) SetCClearColor(color RGBA) {
+	w.clearColor = color
 }

@@ -25,9 +25,10 @@ func main () {
 func run() {
         cfg := pixelgl.WindowConfig{
                 Title:     "Codeview",
-                Bounds:    pixelgl.R(0, 0, 1920, 1080),
-                Resizable: true,
-                VSync:     true,
+                Bounds:     pixelgl.R(0, 0, 1920, 1080),
+                Resizable:  true,
+                VSync:      true,
+                ClearColor: pixelgl.SolBase03,
         }
 
         font, err := font.InitFontFromFile(fontFile, 18)
@@ -114,7 +115,7 @@ func run() {
 
                 penX, penY := float32(border), float32(ih - border - font.Ascender)
                 for _, s := range hello {
-                        drawString(r, font, s, penX, penY, pixelgl.Black)
+                        drawString(r, font, s, penX, penY, pixelgl.SolBase1)
                         penX = float32(border)
                         penY -= float32(lineSpace)
                 }
@@ -127,8 +128,8 @@ func run() {
                         //Put it in the right top corner
                         fX := w - fW
                         fY := h - fH
-                        drawQuad(r, fX, fY, fW, fH, pixelgl.Yellow)
-                        drawString(r, font, s, fX, fY, pixelgl.Red)
+                        drawQuad(r, fX, fY, fW, fH, pixelgl.SolCyan)
+                        drawString(r, font, s, fX, fY, pixelgl.SolBase3)
                 }
 
                 //draw directory triangle thing in top left corner
@@ -136,9 +137,9 @@ func run() {
                 qX, qY := float32(2), h - qH - 2
                 drawQuad(r, qX, qY, qW, qH, pixelgl.Yellow)
                 if closed {
-                        drawPointRight(r, qX, qY, qW, qH, pixelgl.Blue) 
+                        drawPointRight(r, qX, qY, qW, qH, pixelgl.SolRed) 
                 } else {
-                        drawPointDown(r, qX, qY, qW, qH, pixelgl.Blue) 
+                        drawPointDown(r, qX, qY, qW, qH, pixelgl.SolRed) 
                 }
 
 
@@ -198,19 +199,23 @@ func drawQuad(r *pixelgl.Render, x, y, w, h float32, c pixelgl.RGBA) {
 }
 
 func drawPointRight(r *pixelgl.Render, x, y, w, h float32, c pixelgl.RGBA) {
+        rect := pixelgl.R(float64(x), float64(y), float64(x+w), float64(y+h))
+        points := pixelgl.EquilateralTriangle(rect, pixelgl.East)
         triangle := []float32{
-                      x, y + h,         0, c.R, c.G, c.B, -1, -1,   //left top
-                      x, y,             0, c.R, c.G, c.B, -1, -1,   //left bottom
-                      x + w, y + h / 2, 0, c.R, c.G, c.B, -1, -1,   //right middle
+                      float32(points[0].X), float32(points[0].Y), 0, c.R, c.G, c.B, -1, -1,
+                      float32(points[1].X), float32(points[1].Y), 0, c.R, c.G, c.B, -1, -1,
+                      float32(points[2].X), float32(points[2].Y), 0, c.R, c.G, c.B, -1, -1,
                   }
         r.PushTriangle(triangle)
 }
 
 func drawPointDown(r *pixelgl.Render, x, y, w, h float32, c pixelgl.RGBA) {
+        rect := pixelgl.R(float64(x), float64(y), float64(x+w), float64(y+h))
+        points := pixelgl.EquilateralTriangle(rect, pixelgl.South)
         triangle := []float32{
-                      x, y + h,     0, c.R, c.G, c.B, -1, -1,   //left top
-                      x + w / 2, y, 0, c.R, c.G, c.B, -1, -1,   //middle bottom
-                      x + w, y + h, 0, c.R, c.G, c.B, -1, -1,   //right top
+                      float32(points[0].X), float32(points[0].Y), 0, c.R, c.G, c.B, -1, -1,
+                      float32(points[1].X), float32(points[1].Y), 0, c.R, c.G, c.B, -1, -1,
+                      float32(points[2].X), float32(points[2].Y), 0, c.R, c.G, c.B, -1, -1,
                   }
         r.PushTriangle(triangle)
 }
