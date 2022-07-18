@@ -14,6 +14,7 @@ import (
         "github.com/artex2000/codeview/thirdparty/pixelgl"
         "github.com/artex2000/codeview/thirdparty/glhf"
         "github.com/artex2000/codeview/font"
+        "github.com/artex2000/codeview/shaper"
        )
 
 var fontFile string = "C:/Windows/Fonts/VictorMono-Regular.ttf"
@@ -70,7 +71,8 @@ func run() {
                         { Name: "TextureCoord",   Type: glhf.Vec2 },
                     }
 
-        r := pixelgl.NewRender(VertexShader, FragmentShader, Uniforms, Attributes, font.Atlas)
+        render := pixelgl.NewRender(VertexShader, FragmentShader, Uniforms, Attributes, font.Atlas)
+        shaper := shaper.NewShaper(render, font)
 
         //Camera setup
         eye    := mgl32.Vec3{ 0.0, 0.0, 2.0 }
@@ -82,11 +84,11 @@ func run() {
         iw, ih := int(math.Floor(win.Bounds().W())), int(math.Floor(win.Bounds().H()))
 
         //Transform setup
-        r.Model      = mgl32.Ident4()
-        r.View       = mgl32.LookAtV(eye, center, up)
-        r.Projection = mgl32.Ortho(0, w, 0, h, 0.1, 5)
+        render.Model      = mgl32.Ident4()
+        render.View       = mgl32.LookAtV(eye, center, up)
+        render.Projection = mgl32.Ortho(0, w, 0, h, 0.1, 5)
 
-        r.SetTransform(true, true, true)
+        render.SetTransform(true, true, true)
         //r.SetTexture("Texture")
 
         border := 2     //apron size in pixels
@@ -95,7 +97,7 @@ func run() {
         cols := (iw - 2 * border) / font.SpaceAdvance
         rows := (ih - 2 * border) / lineSpace
 
-        win.SetCanvas(r)
+        win.SetCanvas(render)
 
         frameDt := int64(0)
         var hello []string
@@ -115,7 +117,7 @@ func run() {
 
                 penX, penY := float32(border), float32(ih - border - font.Ascender)
                 for _, s := range hello {
-                        drawString(r, font, s, penX, penY, pixelgl.SolBase1)
+                        shaper.DrawString(s, penX, penY, pixelgl.SolBase1)
                         penX = float32(border)
                         penY -= float32(lineSpace)
                 }
@@ -128,25 +130,25 @@ func run() {
                         //Put it in the right top corner
                         fX := w - fW
                         fY := h - fH
-                        drawQuad(r, fX, fY, fW, fH, pixelgl.SolCyan)
-                        drawString(r, font, s, fX, fY, pixelgl.SolBase3)
+                        shaper.DrawQuad(fX, fY, fW, fH, pixelgl.SolCyan)
+                        shaper.DrawString(s, fX, fY, pixelgl.SolBase3)
                 }
 
                 //draw directory triangle thing in top left corner
                 qW, qH := float32(lineSpace - 2), float32(lineSpace - 2)
                 qX, qY := float32(2), h - qH - 2
-                drawQuad(r, qX, qY, qW, qH, pixelgl.Yellow)
+                shaper.DrawQuad(qX, qY, qW, qH, pixelgl.Yellow)
                 if closed {
-                        drawPointRight(r, qX, qY, qW, qH, pixelgl.SolRed) 
+                        shaper.DrawPointRight(qX, qY, qW, qH, pixelgl.SolRed) 
                 } else {
-                        drawPointDown(r, qX, qY, qW, qH, pixelgl.SolRed) 
+                        shaper.DrawPointDown(qX, qY, qW, qH, pixelgl.SolRed) 
                 }
 
 
 
-                r.SetVertices()
+                render.SetVertices()
                 win.Update()
-                r.ResetVertices()
+                render.ResetVertices()
 
                 //process events
                 for _, e := range win.Events() {
@@ -164,60 +166,6 @@ func run() {
                 elapsed := time.Since(start)
                 frameDt = elapsed.Milliseconds()
         }
-}
-
-func drawString(r *pixelgl.Render, font *font.Monofont, s string, penX, penY float32, c pixelgl.RGBA) {
-        for _, t := range s {
-                if t == rune(' ') {
-                        penX += float32(font.SpaceAdvance)
-                        continue
-                }
-
-                g, ok := font.Glyphs[rune(t)]
-                if !ok {
-                        continue
-                }
-                quad := []float32{
-                        penX + float32(g.OffsetX), penY + float32(g.OffsetY),                      0, c.R, c.G, c.B, g.TexS0, g.TexT0,        //left top
-                        penX + float32(g.OffsetX), penY + float32(g.OffsetY - g.Height),           0, c.R, c.G, c.B, g.TexS0, g.TexT1,        //left bottom
-                        penX + float32(g.OffsetX + g.Width), penY + float32(g.OffsetY - g.Height), 0, c.R, c.G, c.B, g.TexS1, g.TexT1,        //right bottom
-                        penX + float32(g.OffsetX + g.Width), penY + float32(g.OffsetY),            0, c.R, c.G, c.B, g.TexS1, g.TexT0,        //right top
-                }
-                r.PushQuad(quad)
-                penX += float32(g.Advance)
-        }
-}
-
-func drawQuad(r *pixelgl.Render, x, y, w, h float32, c pixelgl.RGBA) {
-        quad := []float32{
-                      x, y + h,     0, c.R, c.G, c.B, -1, -1,       //left top
-                      x, y,         0, c.R, c.G, c.B, -1, -1,       //left bottom
-                      x + w, y,     0, c.R, c.G, c.B, -1, -1,       //right bottom
-                      x + w, y + h, 0, c.R, c.G, c.B, -1, -1,       //right top
-              }
-        r.PushQuad(quad)
-}
-
-func drawPointRight(r *pixelgl.Render, x, y, w, h float32, c pixelgl.RGBA) {
-        rect := pixelgl.R(float64(x), float64(y), float64(x+w), float64(y+h))
-        points := pixelgl.EquilateralTriangle(rect, pixelgl.East)
-        triangle := []float32{
-                      float32(points[0].X), float32(points[0].Y), 0, c.R, c.G, c.B, -1, -1,
-                      float32(points[1].X), float32(points[1].Y), 0, c.R, c.G, c.B, -1, -1,
-                      float32(points[2].X), float32(points[2].Y), 0, c.R, c.G, c.B, -1, -1,
-                  }
-        r.PushTriangle(triangle)
-}
-
-func drawPointDown(r *pixelgl.Render, x, y, w, h float32, c pixelgl.RGBA) {
-        rect := pixelgl.R(float64(x), float64(y), float64(x+w), float64(y+h))
-        points := pixelgl.EquilateralTriangle(rect, pixelgl.South)
-        triangle := []float32{
-                      float32(points[0].X), float32(points[0].Y), 0, c.R, c.G, c.B, -1, -1,
-                      float32(points[1].X), float32(points[1].Y), 0, c.R, c.G, c.B, -1, -1,
-                      float32(points[2].X), float32(points[2].Y), 0, c.R, c.G, c.B, -1, -1,
-                  }
-        r.PushTriangle(triangle)
 }
 
 func generateGlyphs(rows, cols int) []string {

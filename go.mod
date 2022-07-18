@@ -5,6 +5,7 @@ go 1.18
 require (
 	github.com/artex2000/codeview/font v0.0.0
 	github.com/artex2000/codeview/thirdparty/pixelgl v0.0.0
+	github.com/artex2000/codeview/shaper v0.0.0
 )
 
 require (
@@ -21,6 +22,7 @@ require (
 
 replace (
 	github.com/artex2000/codeview/font => ./font
+	github.com/artex2000/codeview/shaper => ./shaper
 	github.com/artex2000/codeview/thirdparty/binpack => ./thirdparty/binpack
 	github.com/artex2000/codeview/thirdparty/freetype => ./thirdparty/freetype
 	github.com/artex2000/codeview/thirdparty/glhf => ./thirdparty/glhf
