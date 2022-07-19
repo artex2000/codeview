@@ -25,8 +25,8 @@ func (s *Shaper) DrawQuad(x, y, w, h float32, c pixelgl.RGBA) {
         s.Render.PushQuad(quad)
 }
 
-func (s *Shaper) DrawPointRight(x, y, w, h float32, c pixelgl.RGBA) {
-        rect := pixelgl.R(float64(x), float64(y), float64(x+w), float64(y+h))
+func (s *Shaper) DrawEqTriangleRight(x, y, d float32, c pixelgl.RGBA) {
+        rect := pixelgl.R(float64(x), float64(y), float64(x+d), float64(y+d))
         points := EquilateralTriangle(rect, East)
         triangle := []float32{
                       float32(points[0].X), float32(points[0].Y), 0, c.R, c.G, c.B, -1, -1,
@@ -36,8 +36,8 @@ func (s *Shaper) DrawPointRight(x, y, w, h float32, c pixelgl.RGBA) {
         s.Render.PushTriangle(triangle)
 }
 
-func (s *Shaper) DrawPointDown(x, y, w, h float32, c pixelgl.RGBA) {
-        rect := pixelgl.R(float64(x), float64(y), float64(x+w), float64(y+h))
+func (s *Shaper) DrawEqTriangleDown(x, y, d float32, c pixelgl.RGBA) {
+        rect := pixelgl.R(float64(x), float64(y), float64(x+d), float64(y+d))
         points := EquilateralTriangle(rect, South)
         triangle := []float32{
                       float32(points[0].X), float32(points[0].Y), 0, c.R, c.G, c.B, -1, -1,

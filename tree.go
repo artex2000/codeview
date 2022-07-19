@@ -1,9 +1,9 @@
 package main
 
 import (
-        "fmt"
+//        "fmt"
         "os"
-        "io/fs"
+//        "io/fs"
         "sort"
         "path/filepath"
 )
@@ -11,6 +11,7 @@ import (
 type DirEntryFlags uint64
 const (
         Directory = DirEntryFlags(1 << iota)
+        Root
         Expanded
         ReadError
 )
@@ -43,21 +44,17 @@ func (d *DirEntry) GetFullPath() string {
 
 func (d *DirEntry) Expand() ([]*DirEntry, error) {
         path := d.GetFullPath()
-        fsys := os.DirFS(path)
-        file, err := fsys.Open(path)
+        file, err := os.Open(path)
         if err != nil {
+                panic(err)
                 d.Flags |= ReadError
                 return nil, err
         }
+        defer file.Close()
 
-        dir, ok := file.(fs.ReadDirFile)
-        if !ok {
-                d.Flags |= ReadError
-                return nil, fmt.Errorf("Can't read directory %s - not implemented", path)
-        }
-
-        list, err := dir.ReadDir(-1)
+        list, err := file.Readdir(-1)
         if err != nil {
+                panic(err)
                 d.Flags |= ReadError
                 return nil, err
         }
@@ -111,6 +108,7 @@ func (t *TreeData) ExpandEntry(d *DirEntry, refresh bool) {
 
         out, err := d.Expand()
         if err != nil {
+                panic(err)
                 d.Flags |= ReadError
                 return
         }
@@ -133,6 +131,7 @@ func (t *TreeData) update(d *DirEntry) {
                         ch := t.Cache[*d]
                         t.Lines = append(t.Lines, ch...)
                 }
+                return
         }
 
         idx := t.getEntryIndex(d)

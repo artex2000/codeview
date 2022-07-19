@@ -1,13 +1,11 @@
 package main
 
 import (
-        "fmt"
+//        "fmt"
         //"os"
         //"image"
         //"image/png"
         //"image/draw"
-        "math"
-        "math/rand"
         "time"
 
 	"github.com/go-gl/mathgl/mgl32"
@@ -74,14 +72,14 @@ func run() {
         render := pixelgl.NewRender(VertexShader, FragmentShader, Uniforms, Attributes, font.Atlas)
         shaper := shaper.NewShaper(render, font)
 
+        //Projection setup (will match viewport width/height)
+        winRect := win.Bounds()
+        w, h := float32(winRect.W()), float32(winRect.H())
+
         //Camera setup
         eye    := mgl32.Vec3{ 0.0, 0.0, 2.0 }
         center := mgl32.Vec3{ 0.0, 0.0, 0.0 }
         up     := mgl32.Vec3{ 0.0, 1.0, 0.0 }
-
-        //Projection setup (will match viewport width/height)
-        w, h := float32(win.Bounds().W()), float32(win.Bounds().H())
-        iw, ih := int(math.Floor(win.Bounds().W())), int(math.Floor(win.Bounds().H()))
 
         //Transform setup
         render.Model      = mgl32.Ident4()
@@ -89,25 +87,59 @@ func run() {
         render.Projection = mgl32.Ortho(0, w, 0, h, 0.1, 5)
 
         render.SetTransform(true, true, true)
-        //r.SetTexture("Texture")
-
-        border := 2     //apron size in pixels
-        lineSpace := font.Ascender + font.Descender + font.Linegap
-        //Calculate how many symbols we can have on the screen with 5px bounds
-        cols := (iw - 2 * border) / font.SpaceAdvance
-        rows := (ih - 2 * border) / lineSpace
 
         win.SetCanvas(render)
 
-        frameDt := int64(0)
-        var hello []string
-        freeze := false
+        container := NewContainer(shaper, winRect)
+        container.AddTree("C:/go/work/src/github.com/artex2000/codeview")
 
-        closed := true
+        frameDt := int64(0)
 
         for !win.Closed() {
                 start := time.Now()
 
+                container.Draw()
+
+                render.SetVertices()
+                win.Update()
+                render.ResetVertices()
+
+                //process events
+                for _, e := range win.Events() {
+                        handled := false
+                        switch e.Type {
+                        case pixelgl.KeyPress:
+                                if e.Key == pixelgl.KeySpace {
+                                        handled = true
+                                } else if e.Key == pixelgl.KeyEscape {
+                                        win.SetClosed(true)
+                                        handled = true
+                                }
+                        }
+                        if !handled {
+                                container.ProcessEvent(e)
+                        }
+                }
+
+                elapsed := time.Since(start)
+                frameDt = elapsed.Milliseconds()
+                container.Update(frameDt)
+        }
+}
+
+
+/*
+func generateGlyphs(rows, cols int) []string {
+        out := make([]string, rows)
+        for i, _ := range out {
+                s := make([]byte, cols)
+                for j, _ := range s {
+                        s[j] = byte(rand.Intn(0x7f - 0x20) + 0x20)
+                }
+                out[i] = string(s)
+        }
+        return out
+}
                 //Push glyph quads
                 //hello := "The quick brown fox jumps over the lazy dog. 1234567890"
                 extras := 10
@@ -143,39 +175,4 @@ func run() {
                 } else {
                         shaper.DrawPointDown(qX, qY, qW, qH, pixelgl.SolRed) 
                 }
-
-
-
-                render.SetVertices()
-                win.Update()
-                render.ResetVertices()
-
-                //process events
-                for _, e := range win.Events() {
-                        switch e.Type {
-                        case pixelgl.KeyPress:
-                                if e.Key == pixelgl.KeySpace {
-                                        freeze = !freeze
-                                        closed = !closed
-                                } else if e.Key == pixelgl.KeyEscape {
-                                        win.SetClosed(true)
-                                }
-                        }
-                }
-
-                elapsed := time.Since(start)
-                frameDt = elapsed.Milliseconds()
-        }
-}
-
-func generateGlyphs(rows, cols int) []string {
-        out := make([]string, rows)
-        for i, _ := range out {
-                s := make([]byte, cols)
-                for j, _ := range s {
-                        s[j] = byte(rand.Intn(0x7f - 0x20) + 0x20)
-                }
-                out[i] = string(s)
-        }
-        return out
-}
+*/
