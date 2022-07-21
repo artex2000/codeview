@@ -84,12 +84,20 @@ func (r Rect) Edges() [4]Line {
 
 // IntBounds will return the integer bounds of the rectangle.
 func (r Rect) IntBounds() (x, y, w, h int) {
-	x0 := int(math.Floor(r.Min.X))
-	y0 := int(math.Floor(r.Min.Y))
-	x1 := int(math.Ceil(r.Max.X))
-	y1 := int(math.Ceil(r.Max.Y))
+        nr := r.Norm()
+	x0 := int(math.Floor(nr.Min.X))
+	y0 := int(math.Floor(nr.Min.Y))
+	x1 := int(math.Ceil(nr.Max.X))
+	y1 := int(math.Ceil(nr.Max.Y))
 	return x0, y0, x1 - x0, y1 - y0
 }
+
+// FloatBounds will return the float32 bounds of the rectangle.
+func (r Rect) FloatBounds() (x, y, w, h float32) {
+        nr := r.Norm()
+	return float32(nr.Min.X), float32(nr.Min.Y), float32(nr.Max.X - nr.Min.X), float32(nr.Max.Y - nr.Min.Y)
+}
+
 
 // Anchor is a vector used to define anchors, such as `Center`, `Top`, `TopRight`, etc.
 type Anchor Vec

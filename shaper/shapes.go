@@ -24,10 +24,6 @@ func EquilateralTriangle(bounds pixelgl.Rect, direction Direction) [3]pixelgl.Ve
         var out [3]pixelgl.Vec
 
         r := bounds.Norm()
-        width, height := r.W(), r.H()
-        if width != height {
-                panic("EquilateralTriangle: Bounding box is not a square")
-        }
 
         radius := r.W() / 2
         middlePoint := pixelgl.Vec{r.Min.X + radius, r.Min.Y + radius}
