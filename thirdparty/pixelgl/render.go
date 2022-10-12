@@ -218,6 +218,13 @@ func (r *Render) Draw() {
         r.Shader.End()
 }
 
+//This function is part of glfw Resize callback
+//So it's placed into main thread by caller
+func (r *Render) Resize(width, height float32) {
+        r.Projection = mgl32.Ortho(0, width, 0, height, 0.1, 5)
+        r.SetTransform(false, false, true)
+}
+
 /*
 func (r *Render) SetColors() {
         fg := colorToVec4(r.Foreground)

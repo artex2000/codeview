@@ -161,7 +161,22 @@ func (b Button) String() string {
 	return name
 }
 
+// GetButton returns button ID from string
+func GetButton(s string) Button {
+        for k, v := range buttonNames {
+                if v == s {
+                        return k
+                }
+        }
+        return KeyUnknown
+}
+
 var buttonNames = map[Button]string{
+        /* Mouse buttons 1-3 are the same as Left/Right/Middle
+	MouseButton1:      "MouseButton1",
+	MouseButton2:      "MouseButton2",
+	MouseButton3:      "MouseButton3",
+        */
 	MouseButton4:      "MouseButton4",
 	MouseButton5:      "MouseButton5",
 	MouseButton6:      "MouseButton6",

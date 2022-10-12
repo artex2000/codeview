@@ -19,12 +19,20 @@ var ZR = Rect{Min: ZV, Max: ZV}
 
 // R returns a new Rect with given the Min and Max coordinates.
 //
-// Note that the returned rectangle is not automatically normalized.
 func R(minX, minY, maxX, maxY float64) Rect {
-	return Rect{
+        r := Rect{
 		Min: Vec{minX, minY},
 		Max: Vec{maxX, maxY},
 	}
+        return r.Norm()
+}
+
+func FR(minX, minY, maxX, maxY float32) Rect {
+        r := Rect{
+		Min: Vec{float64(minX), float64(minY)},
+		Max: Vec{float64(maxX), float64(maxY)},
+	}
+        return r.Norm()
 }
 
 // String returns the string representation of the Rect.

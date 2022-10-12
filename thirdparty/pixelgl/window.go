@@ -93,6 +93,7 @@ const (
         KeyPress        = EventType(6)
         KeyRelease      = EventType(7)
         KeyRepeat       = EventType(8)
+        WinResize       = EventType(9)
 )
 
 type Event struct {
@@ -222,10 +223,23 @@ func NewWindow(cfg WindowConfig) (*Window, error) {
 	mainthread.Call(func() {
                 w.window.SetFramebufferSizeCallback(func(_ *glfw.Window, width, height int) {
                         //fmt.Printf("Framebuffer size changed to %d : %d\n", width, height)
+
+                        //We want to queue resize event to pass resize info to composer
+                        //However during continuous resize (like via mouse drag) main loop
+                        //isn't called, so these events will accumulate, which we don't want
+                        if len(w.eventQueue) == 0 || w.eventQueue[len(w.eventQueue) - 1].Type != WinResize { 
+                                e := Event{Frame: w.frameCount, Type: WinResize, X: float32(width), Y: float32(height)}
+                                w.eventQueue = append(w.eventQueue, e)
+                        } else {
+                               w.eventQueue[len(w.eventQueue) - 1].X = float32(width) 
+                               w.eventQueue[len(w.eventQueue) - 1].Y = float32(height) 
+                        }
+
                         glhf.Bounds(0, 0, width, height)
                         glhf.Clear(w.clearColor.R, w.clearColor.G, w.clearColor.B, 0.0)
                         if w.canvas != nil {
-                                w.canvas.Draw()
+                                //w.canvas.Resize(float32(width), float32(height))
+                                //w.canvas.Draw()
                         }
                         w.window.SwapBuffers()
                 })

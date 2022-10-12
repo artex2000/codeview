@@ -90,40 +90,33 @@ func run() {
 
         win.SetCanvas(render)
 
-        container := NewContainer(shaper, winRect)
-        container.AddTree("C:/go/work/src/github.com/artex2000/codeview")
+        composer := NewComposer(shaper, winRect)
+        composer.AddTree("C:/go/work/src/github.com/artex2000/codeview")
 
         frameDt := int64(0)
 
         for !win.Closed() {
                 start := time.Now()
 
-                container.Draw()
+                //process events
+                for _, e := range win.Events() {
+                        composer.ProcessEvent(e)
+                }
+
+                if composer.ShouldClose() {
+                        //We've received "Quit" command
+                        win.SetClosed(true)
+                }
+
+                composer.Draw()
 
                 render.SetVertices()
                 win.Update()
                 render.ResetVertices()
 
-                //process events
-                for _, e := range win.Events() {
-                        handled := false
-                        switch e.Type {
-                        case pixelgl.KeyPress:
-                                if e.Key == pixelgl.KeySpace {
-                                        handled = true
-                                } else if e.Key == pixelgl.KeyEscape {
-                                        win.SetClosed(true)
-                                        handled = true
-                                }
-                        }
-                        if !handled {
-                                container.ProcessEvent(e)
-                        }
-                }
-
                 elapsed := time.Since(start)
                 frameDt = elapsed.Milliseconds()
-                container.Update(frameDt)
+                composer.Update(frameDt)
         }
 }
 

@@ -20,9 +20,27 @@ const (
         Tree
 )
 
+type WidgetPosType int
+const (
+        DockLeft = WidgetPosType(iota)
+        DockRight
+        DockTop
+        DockBottom
+        FloatCenter
+)
+
+type WidgetPosition struct {
+        Type            WidgetPosType
+        Relative        bool
+        Width           float32
+        Height          float32
+}
+
 type Widget struct {
         Type            WidgetType
+        Position        WidgetPosition
         Bounds          pixelgl.Rect
+        
         /*
         Foreground      pixelgl.RGBA
         Background      pixelgl.RGBA
@@ -32,26 +50,30 @@ type Widget struct {
         Data            interface{}
 }
 
-type Container struct {
+type Composer struct {
         shaper          *shaper.Shaper
         bounds          pixelgl.Rect
         widgets         []*Widget
         widgetErr       chan error
         focusIndex      int
         palette         map[string]pixelgl.RGBA
+        shouldClose     bool
 }
 
-func NewContainer(s *shaper.Shaper, r pixelgl.Rect) *Container {
-        out := &Container{shaper: s, bounds: r}
+func NewComposer(s *shaper.Shaper, r pixelgl.Rect) *Composer {
+        out := &Composer{shaper: s, bounds: r}
         out.widgetErr = make(chan error, 5)
         return out
 }
 
-func (c *Container) AddTree(root string) {
-        w := Widget{Type: Tree, Errors: c.widgetErr}
-        xmin, ymin := c.bounds.Min.X, c.bounds.Min.Y
-        xmax, ymax := xmin + c.bounds.W() / 3, c.bounds.Max.Y
-        w.Bounds = pixelgl.R(xmin, ymin, xmax, ymax)
+func (c *Composer) ShouldClose() bool {
+        return c.shouldClose
+}
+
+func (c *Composer) AddTree(root string) {
+        w := Widget{Type: Tree, Errors: c.widgetErr, 
+                    Position: WidgetPosition{Type: DockLeft, Relative: true, Width: 0.3, Height: 1}}
+        c.UpdateWidgetPosition(&w)
         
         tree := &TreeData{}
         tree.RootEntry = &DirEntry{Name: root, Parent: nil, Level: 0, Flags: (Directory | Root)}
@@ -62,7 +84,7 @@ func (c *Container) AddTree(root string) {
         c.widgets = append(c.widgets, &w)
 }
 
-func (c *Container) DrawTree(w *Widget) {
+func (c *Composer) DrawTree(w *Widget) {
         t := w.Data.(*TreeData)
         tree := t.Lines[t.ScrollIndex:]
         X, Y, W, H := w.Bounds.FloatBounds()
@@ -130,7 +152,7 @@ func (c *Container) DrawTree(w *Widget) {
         }
 }
 
-func (c *Container) Draw() {
+func (c *Composer) Draw() {
         for _, w := range c.widgets {
                 switch w.Type {
                 case Tree:
@@ -139,8 +161,44 @@ func (c *Container) Draw() {
         }
 }
 
-func (c *Container) Update(ms int64) {
+func (c *Composer) Update(ms int64) {
 }
 
-func (c *Container) ProcessEvent(e pixelgl.Event) {
+func (c *Composer) Resize(width, height float32) {
+       c.shaper.Resize(width, height)
+        x, y, _, _ := c.bounds.FloatBounds()
+        c.bounds = pixelgl.FR(x, y, x+width, y+height)
+
+
+        for _, wg := range c.widgets {
+                c.UpdateWidgetPosition(wg)
+        }
+}
+
+func (c *Composer) UpdateWidgetPosition(wg *Widget) {
+        var wx, wy, ww, wh float32
+        x, y, w, h := c.bounds.FloatBounds()
+
+        if wg.Position.Type == DockLeft {
+                wx, wy = x, y
+        }
+
+        if wg.Position.Relative {
+                ww = w * wg.Position.Width
+                wh = h * wg.Position.Height
+        }
+
+        wg.Bounds = pixelgl.FR(wx, wy, wx+ww, wy+wh)
+}
+
+func (c *Composer) ProcessEvent(e pixelgl.Event) {
+        switch e.Type {
+        case pixelgl.KeyPress:
+                if e.Key == pixelgl.KeySpace {
+                } else if e.Key == pixelgl.KeyEscape {
+                        c.shouldClose = true
+                }
+        case pixelgl.WinResize:
+                c.Resize(e.X, e.Y)
+        }
 }

@@ -15,6 +15,10 @@ func NewShaper(r *pixelgl.Render, f *font.Monofont) *Shaper {
         return &Shaper{Render: r, Font: f}
 }
 
+func (s *Shaper) Resize(width, height float32) {
+        s.Render.Resize(width, height)
+}
+
 func (s *Shaper) DrawQuad(x, y, w, h float32, c pixelgl.RGBA) {
         quad := []float32{
                       x, y + h,     0, c.R, c.G, c.B, -1, -1,       //left top
